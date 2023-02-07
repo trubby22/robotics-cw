@@ -54,10 +54,11 @@ def rotate(side):
 
 
 try:
-    # forward(40)
-    for i in range(4):
-        forward(40)
-        rotate(-1)
+    forward(40)
+    # for i in range(4):
+    #     forward(40)
+    #     rotate(-1)
+
 except Exception as e:
     print(e)
     BP.reset_all()
