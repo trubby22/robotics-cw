@@ -11,8 +11,9 @@ C = D * math.pi
 
 
 LWHEEL = BP.PORT_A
-RWHEEL = BP.PORT_D
-BASEROT = 207
+RWHEEL = BP.PORT_B
+BASEROT = 220
+
 DPS = 275
 
 
@@ -54,10 +55,12 @@ def rotate(side):
 
 
 try:
-    forward(40)
-    # for i in range(4):
-    #     forward(40)
-    #     rotate(-1)
+    # forward(200)
+    for i in range(1):
+        for i in range(1):
+            print
+            forward(200)
+            # rotate(-1)
 
 except Exception as e:
     print(e)
