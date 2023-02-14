@@ -84,10 +84,17 @@ class State:
 
 
     def rotate(self, a, g) -> State:
+<<<<<<< HEAD
         self.a -= a + g
 
     def __str__(self) -> str:
         return f"({self.pos.x}, {self.pos.y + 400}, {self.a})"
+=======
+        self.a += a + g
+
+    def __str__(self) -> str:
+        return f"({self.pos.x}, {self.pos.y}, {self.a})"
+>>>>>>> cf9cd1f36d256ecea295bc4ee5d6d56b7c852692
 
     def __repr__(self) -> str:
         return str(self)
