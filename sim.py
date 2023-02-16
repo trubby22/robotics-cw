@@ -57,13 +57,19 @@ def rotate(side):
     add_angle(BASEROT * side, BASEROT * -side)
 
 
-def navto(state, waypoint):
+def navto(sim, waypoint):
+    state = sim.get_mean_state()
     dx = waypoint.x - state.pos.x
     dy = waypoint.y - state.pos.y
     distance = (dx ** 2 + dy ** 2) ** 0.5
-    angle = math.degrees(math.atan2(dx, dy))
-    rotate(state.a - angle / 90)
+    angle = (math.degrees(math.atan2(dy, dx)))
+    # if angle < 0:
+    #     angle += 360
+    print(angle, distance)
+    rotate(((state.a - angle) % 360) / 90)
     forward(distance)
+    sim.rotateL(((state.a - angle) % 360))
+    sim.forward(distance)
 
 
 def _rng(sigma, mu=0):
@@ -84,17 +90,16 @@ class State:
 
 
     def rotate(self, a, g) -> State:
-<<<<<<< HEAD
         self.a -= a + g
+
+    def __add__(self, state) -> State:
+        return State(self.pos + state.pos, self.a + state.a)
+
+    def __div__(self, n) -> State:
+        return State(self.pos / n, self.a / n)
 
     def __str__(self) -> str:
         return f"({self.pos.x}, {self.pos.y + 400}, {self.a})"
-=======
-        self.a += a + g
-
-    def __str__(self) -> str:
-        return f"({self.pos.x}, {self.pos.y}, {self.a})"
->>>>>>> cf9cd1f36d256ecea295bc4ee5d6d56b7c852692
 
     def __repr__(self) -> str:
         return str(self)
@@ -109,6 +114,9 @@ class Point:
             raise TypeError
 
         return Point(self.x + point.x, self.y + point.y)
+    
+    def __div__(self, n):
+        return Point(self.x / n, self.y / n)
 
 
 
@@ -131,6 +139,14 @@ class Simulation:
         for state in self.states:
             state.rotate(a, self.grng())
 
+    def get_mean_state(self):
+        x, y, a = 0, 0, 0
+        n = len(self.states)
+        for s in self.states:
+            x += s.pos.x
+            y += s.pos.y
+            a += s.a
+        return State(Point(x/n, y/n), a/n)
 
     def drawBox(self):
         d = 400
@@ -143,6 +159,7 @@ class Simulation:
         self.drawBox()
         # draw the states
         print(f"drawParticles:{str(self.states)}")
+        # print(self.get_mean_state())
 
 e = 0.7071067811865475
 f = 0.1426
@@ -150,16 +167,23 @@ g = 2.507533339065598
 
 sim = Simulation(e, f, g, 100)
 
-try:
-    for _ in range(4):
-        for _ in range(4):
-            sim.forward(100)
-            sim.draw()
-            forward(10)
-        sim.rotateL(90)
-        sim.draw()
-        rotate(-1)
-except Exception as e:
-    print(e)
+# try:
+#     for _ in range(4):
+#         for _ in range(4):
+#             sim.forward(100)
+#             # sim.draw()
+#             # forward(10)
+#         sim.rotateL(90)
+#         # sim.draw()
+#         # rotate(-1)
+# except Exception as e:
+#     print(e)
 
-# navto(State(Point(0,0), 0), Point(10, 10))
+navto(sim, Point(50, 50))
+navto(sim, Point(50, 0))
+navto(sim, Point(-50, 0))
+navto(sim, Point(-50, -50))
+navto(sim, Point(0, 0))
+# navto(sim.get_mean_state(), Point(20, 20))
+# navto(sim.get_mean_state(), Point(-10, 0))
+# navto(sim.get_mean_state(), Point(0, 20))

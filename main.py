@@ -55,7 +55,6 @@ def rotate(side):
 
 
 try:
-<<<<<<< HEAD
     rotate(-20)
     # for i in range(5):
         # rotate(-4)
@@ -65,14 +64,6 @@ try:
     #         print
     #         forward(200)
     #         rotate(-1)
-=======
-    # forward(200)
-    for i in range(1):
-        for i in range(1):
-            print
-            forward(200)
-            # rotate(-1)
->>>>>>> cf9cd1f36d256ecea295bc4ee5d6d56b7c852692
 
 except Exception as e:
     print(e)
