@@ -65,10 +65,15 @@ def navto(sim, waypoint):
     angle = (math.degrees(math.atan2(dy, dx)))
     # if angle < 0:
     #     angle += 360
-    print(angle, distance)
-    rotate(((state.a - angle) % 360) / 90)
+    # print(angle, distance)
+
+    angle = ((((state.a - angle)) % 360) + 360) % 360
+    if angle > 180:
+        angle -= 360
+
+    rotate(angle / 90)
     forward(distance)
-    sim.rotateL(((state.a - angle) % 360))
+    sim.rotateL(angle % 360)
     sim.forward(distance)
 
 
