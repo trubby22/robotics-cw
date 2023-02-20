@@ -70,10 +70,12 @@ def navto(sim, waypoint):
 
     sim.rotateL(angle)
     sim.forward(distance)
-    sim.draw()
+    # sim.draw()
 
     # rotate(angle)
     # forward(distance)
+
+    sim.resample(200)
 
 
 def _rng(sigma, mu=0):
@@ -81,7 +83,7 @@ def _rng(sigma, mu=0):
 
 
 # return the distance between a state and a line if it intersects, it not return None
-def state_line_distance(state, p1, p2):
+def state_segment_distance(state, p1, p2):
     # turn both into parametric form
     # segment start, segment end
     ss = p1
@@ -117,15 +119,28 @@ def state_line_distance(state, p1, p2):
     # find the coordinates of the intersection on the line
     inter = ls + ld * l
 
-    print(s_1, s_2, s)
-    print(l_1, l_2, l)
-    print(ss, se, ls, le)
-    print(ls, inter)
-
     # find the distance from the intersection to the segment
     distance = (inter - ls).mag()
 
     return distance
+
+
+# The one from the slides
+def state_segment_distance2(state, p1, p2):
+    dp2p1 = p2 - p1
+    dp1s = state.pos - p1
+    top = dp2p1.x * dp1s.y - dp2p1.y * dp1s.x
+    bottom = dp2p1.y * math.cos(math.radians(state.a)) - dp2p1.x * math.sin(math.radians(state.a))
+    return top / bottom
+
+
+def weighted_choice(choices):
+    rnum = random.random()
+    for weight, state in choices:
+        if rnum < weight:
+            return state
+        rnum -= weight
+    raise ValueError("No choice made")
 
 
 class State:
@@ -133,10 +148,27 @@ class State:
         self.pos = point
         self.a = a
 
-    def forward(self, d, e, f) -> None:
+    def forward(self, d, e, f) -> State:
         self.pos.x += (d + e) * math.cos(math.radians(self.a))
         self.pos.y += (d + e) * math.sin(math.radians(self.a))
-        self.a += f
+        self.a = (self.a - f) % 360
+        return self
+
+    def rotate(self, a, g) -> State:
+        self.a = (self.a - a - g) % 360
+        return self
+
+    def __add__(self, state) -> State:
+        return State(self.pos + state.pos, self.a + state.a)
+
+    def __div__(self, n) -> State:
+        return State(self.pos / n, self.a / n)
+
+    def __str__(self) -> str:
+        return f"({self.pos.x}, {self.pos.y + 400}, {self.a})"
+
+    def __repr__(self) -> str:
+        return str(self)
 
 
 class Point:
@@ -158,13 +190,21 @@ class Point:
         return Point(self.x - point.x, self.y - point.y)
 
     def __mul__(self, n):
-        return Point(self.x * n, self.y * n)
+        if isinstance(n, Point):
+            return Point(self.x * n.x, self.y * n.y)
+        elif isinstance(n, int) or isinstance(n, float):
+            return Point(self.x * n, self.y * n)
+        else:
+            raise TypeError
 
     def __div__(self, n):
         return Point(self.x / n, self.y / n)
 
     def __str__(self) -> str:
         return f"({self.x}, {self.y})"
+
+    def __repr__(self) -> str:
+        return str(self)
 
 
 class Simulation:
@@ -185,10 +225,10 @@ class Simulation:
                       Point(210, 84),
                       Point(210, 0)]
 
-    def to_world_graphics(self, state):
+    def to_world_graphics(self, point):
         offset = Point(50, 300)
         dirmult = Point(1, -1)
-        return state.pos * dirmult + offset
+        return point * dirmult + offset
 
     def drawLine(self, p1, p2):
         p1 = self.to_world_graphics(p1)
@@ -200,12 +240,18 @@ class Simulation:
             self.drawLine(self.verts[i], self.verts[(i + 1) % len(self.verts)])
 
     def drawStates(self):
-        states = [self.to_world_graphics(state) for state in self.states]
+        states = [self.to_world_graphics(state.pos) for state in self.states]
         print(f"drawStates:{str(states)}")
 
     def draw(self):
         self.drawBox()
         self.drawStates()
+
+    def resample(self, measurements):
+        ws = [(self.calc_likelihood(state, measurements), state) for state in self.states]
+        sws = sum([w for w, s in ws])
+        aws = [(w / sws, s) for w, s in ws]
+        self.states = [weighted_choice(aws) for i in range(self.N)]
 
     def forward(self, d):
         for state in self.states:
@@ -232,12 +278,21 @@ class Simulation:
             wall_start = self.verts[i]
             wall_end = self.verts[(i + 1) % len(self.verts)]
             # check for line line intersection
+            distance = state_segment_distance(state, wall_start, wall_end)
+            if distance is not None and distance >= 0:
+                wall_distances.append(distance)
+
+        if len(wall_distances) == 0:
+            return None
 
         return min(wall_distances)
 
     def calc_likelihood(self, state, measurement):
         expected = self.find_wall(state, measurement)
-        return math.exp((-(expected - measurement)) ** 2 / (2 * SIGMA ** 2))
+        if expected is None:
+            # no wall is found
+            return 0
+        return math.exp(-(expected - measurement) ** 2 / (2 * SIGMA ** 2))
 
 
 e = 0.7071067811865475
@@ -248,21 +303,26 @@ sim = Simulation(e, f, g, 100)
 
 
 # try:
-#     navto(sim, Point(84, 30))
-#     navto(sim, Point(180, 30))
-#     navto(sim, Point(180, 54))
-#     navto(sim, Point(138, 54))
-#     navto(sim, Point(138, 168))
-#     navto(sim, Point(114, 168))
-#     navto(sim, Point(114, 84))
-#     navto(sim, Point(84, 84))
-#     navto(sim, Point(84, 30))
+navto(sim, Point(84, 30))
+# navto(sim, Point(180, 30))
+# navto(sim, Point(180, 54))
+# navto(sim, Point(138, 54))
+# navto(sim, Point(138, 168))
+# navto(sim, Point(114, 168))
+# navto(sim, Point(114, 84))
+# navto(sim, Point(84, 84))
+# navto(sim, Point(84, 30))
 # except Exception as e:
 #     print(e)
 
-# here are
-print(state_line_distance(State(Point(0, 0), 0), Point(0, 1), Point(1, 0)))
-print(state_line_distance(State(Point(0, 0), 45), Point(0, 1), Point(1, 0)))
-print(state_line_distance(State(Point(0, 0), 90), Point(0, 1), Point(1, 0)))
-print(state_line_distance(State(Point(0, 0), 45), Point(0.7, 3.8), Point(5.9, 1.8)))
-print(state_line_distance(State(Point(0, 0), 45), Point(-1.6, 4.5), Point(-0.8, -3.1)))
+# print(state_segment_distance(State(Point(0, 0), 0), Point(0, 1), Point(1, 0)))
+# print(state_segment_distance(State(Point(0, 0), 45), Point(0, 1), Point(1, 0)))
+# print(state_segment_distance(State(Point(0, 0), 90), Point(0, 1), Point(1, 0)))
+# print(state_segment_distance(State(Point(0, 0), 45), Point(0.7, 3.8), Point(5.9, 1.8)))
+# print(state_segment_distance(State(Point(0, 0), 45), Point(-1.6, 4.5), Point(-0.8, -3.1)))
+
+# print(state_segment_distance2(State(Point(0, 0), 0), Point(0, 1), Point(1, 0)))
+# print(state_segment_distance2(State(Point(0, 0), 45), Point(0, 1), Point(1, 0)))
+# print(state_segment_distance2(State(Point(0, 0), 90), Point(0, 1), Point(1, 0)))
+# print(state_segment_distance2(State(Point(0, 0), 45), Point(0.7, 3.8), Point(5.9, 1.8)))
+# print(state_segment_distance2(State(Point(0, 0), 45), Point(-1.6, 4.5), Point(-0.8, -3.1)))
