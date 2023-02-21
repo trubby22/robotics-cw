@@ -1,60 +1,60 @@
 from __future__ import annotations
 import math
 import random
-# import time
 
-# import brickpi3
+import brickpi3
 import math
 import time
 
 # 18cm - between wheels
 
-# BP = brickpi3.BrickPi3()
+BP = brickpi3.BrickPi3()
 
 D = 6.8
 C = D * math.pi
 
 SIGMA = 3
 
-# LWHEEL = BP.PORT_A
-# RWHEEL = BP.PORT_B
-# BASEROT = 207
-# DPS = 275
+LWHEEL = BP.PORT_A
+RWHEEL = BP.PORT_B
+BASEROT = 207
+DPS = 275
 
 
-# BP.set_motor_limits(LWHEEL, dps=DPS)
-# BP.set_motor_limits(RWHEEL, dps=DPS)
+BP.set_motor_limits(LWHEEL, dps=DPS)
+BP.set_motor_limits(RWHEEL, dps=DPS)
 
 
-# def close_enough(a, b, delta=1):
-#     return abs(a - b) <= delta
+def close_enough(a, b, delta=1):
+    return abs(a - b) <= delta
 
 
-# def add_angle(langle, rangle):
-#     old_langle = BP.get_motor_encoder(LWHEEL)
-#     old_rangle = BP.get_motor_encoder(RWHEEL)
-#     target_langle = old_langle + langle
-#     target_rangle = old_rangle + rangle
+def add_angle(langle, rangle):
+    old_langle = BP.get_motor_encoder(LWHEEL)
+    old_rangle = BP.get_motor_encoder(RWHEEL)
+    target_langle = old_langle + langle
+    target_rangle = old_rangle + rangle
 
-#     BP.set_motor_position_relative(LWHEEL, langle)
-#     BP.set_motor_position_relative(RWHEEL, rangle)
+    BP.set_motor_position_relative(LWHEEL, langle)
+    BP.set_motor_position_relative(RWHEEL, rangle)
 
-#     while not close_enough(old_langle, target_langle) and not close_enough(old_rangle, target_rangle):
-#         old_langle = BP.get_motor_encoder(LWHEEL)
-#         old_rangle = BP.get_motor_encoder(RWHEEL)
-#         time.sleep(0.01)
-
-
-# # drives forwards in cm
-# def forward(distance):
-#     rots = distance / 90 / C
-#     angle = rots * 360
-#     add_angle(angle, angle)
+    while not close_enough(old_langle, target_langle) and not close_enough(old_rangle, target_rangle):
+        old_langle = BP.get_motor_encoder(LWHEEL)
+        old_rangle = BP.get_motor_encoder(RWHEEL)
+        time.sleep(0.01)
 
 
-# # side 1 = rotate anticlock, side -1 = rotate clock
-# def rotate(side):
-#     add_angle(BASEROT * side, BASEROT * -side)
+# drives forwards in cm
+def forward(distance):
+    rots = distance / C
+    angle = rots * 360
+    add_angle(angle, angle)
+
+
+# side 1 = rotate anticlock, side -1 = rotate clock
+def rotate(side):
+    side = side / 90
+    add_angle(BASEROT * side, BASEROT * -side)
 
 
 def navto(sim, waypoint):
@@ -68,61 +68,19 @@ def navto(sim, waypoint):
     if angle > 180:
         angle -= 360
 
+    print(angle, distance)
     sim.rotateL(angle)
     sim.forward(distance)
-    # sim.draw()
+    sim.draw()
 
-    # rotate(angle)
-    # forward(distance)
+    rotate(angle)
+    forward(distance)
 
-    sim.resample(200)
+    # sim.resample(200)
 
 
 def _rng(sigma, mu=0):
     return lambda: random.normalvariate(mu=mu, sigma=sigma)
-
-
-# return the distance between a state and a line if it intersects, it not return None
-def state_segment_distance(state, p1, p2):
-    # turn both into parametric form
-    # segment start, segment end
-    ss = p1
-    se = p2
-
-    # line in parametric form
-    # line start, line delta, line end
-    ls = state.pos
-    ld = Point(math.cos(math.radians(state.a)), math.sin(math.radians(state.a)))
-    le = ls + ld
-
-    # find the point of intersection
-    # \left(y_{1}-y_{2}\right)\left(x_{1}-x_{3}\right)+\left(x_{2}-x_{1}\right)\left(y_{1}-y_{3}\right)
-    # \left(x_{4}-x_{3}\right)\left(y_{1}-y_{2}\right)-\left(x_{1}-x_{2}\right)\left(y_{4}-y_{3}\right)
-    # \left(y_{3}-y_{4}\right)\left(x_{1}-x_{3}\right)+\left(x_{4}-x_{3}\right)\left(y_{1}-y_{3}\right)
-    # \left(x_{4}-x_{3}\right)\left(y_{1}-y_{2}\right)-\left(x_{1}-x_{2}\right)\left(y_{4}-y_{3}\right)
-    l_1 = (ss.y - se.y) * (ss.x - ls.x) + (se.x - ss.x) * (ss.y - ls.y)
-    l_2 = (le.x - ls.x) * (ss.y - se.y) - (ss.x - se.x) * (le.y - ls.y)
-    s_1 = (ls.y - le.y) * (ss.x - ls.x) + (le.x - ls.x) * (ss.y - ls.y)
-    s_2 = (le.x - ls.x) * (ss.y - se.y) - (ss.x - se.x) * (le.y - ls.y)
-
-    # if the lines are parallel, there is no intersection
-    if s_2 == 0 or l_2 == 0:
-        return None
-
-    s = s_1 / s_2
-    l = l_1 / l_2
-
-    # if it's not between 0 and 1, it's not on the segment
-    if s < 0 or s > 1:
-        return None
-
-    # find the coordinates of the intersection on the line
-    inter = ls + ld * l
-
-    # find the distance from the intersection to the segment
-    distance = (inter - ls).mag()
-
-    return distance
 
 
 # The one from the slides
@@ -147,6 +105,9 @@ class State:
     def __init__(self, point, a) -> None:
         self.pos = point
         self.a = a
+        
+    def clone(self):
+        return State(Point(self.pos.x, self.pos.y), self.a) 
 
     def forward(self, d, e, f) -> State:
         self.pos.x += (d + e) * math.cos(math.radians(self.a))
@@ -165,7 +126,7 @@ class State:
         return State(self.pos / n, self.a / n)
 
     def __str__(self) -> str:
-        return f"({self.pos.x}, {self.pos.y + 400}, {self.a})"
+        return f"({self.pos.x}, {self.pos.y}, {self.a})"
 
     def __repr__(self) -> str:
         return str(self)
@@ -208,13 +169,13 @@ class Point:
 
 
 class Simulation:
-    def __init__(self, e, f, g, N=100):
+    def __init__(self, e, f, g, N=100, initial_state = State(Point(0,0), 0)):
         self.erng = _rng(e)
         self.frng = _rng(f)
         self.grng = _rng(g)
 
         self.N = N
-        self.states = [State(Point(0, 0), 0) for i in range(self.N)]
+        self.states = [initial_state.clone() for i in range(self.N)]
         self.verts = [Point(0, 0),
                       Point(0, 168),
                       Point(84, 168),
@@ -240,8 +201,9 @@ class Simulation:
             self.drawLine(self.verts[i], self.verts[(i + 1) % len(self.verts)])
 
     def drawStates(self):
-        states = [self.to_world_graphics(state.pos) for state in self.states]
-        print(f"drawStates:{str(states)}")
+        states = [State(self.to_world_graphics(state.pos), state.a) for state in self.states]
+        # print(self.states)
+        print(f"drawParticles:{str(states)}")
 
     def draw(self):
         self.drawBox()
@@ -302,24 +264,18 @@ g = 2.507533339065598
 sim = Simulation(e, f, g, 100)
 
 
-# try:
-navto(sim, Point(84, 30))
-# navto(sim, Point(180, 30))
-# navto(sim, Point(180, 54))
-# navto(sim, Point(138, 54))
-# navto(sim, Point(138, 168))
-# navto(sim, Point(114, 168))
-# navto(sim, Point(114, 84))
-# navto(sim, Point(84, 84))
-# navto(sim, Point(84, 30))
-# except Exception as e:
-#     print(e)
-
-# print(state_segment_distance(State(Point(0, 0), 0), Point(0, 1), Point(1, 0)))
-# print(state_segment_distance(State(Point(0, 0), 45), Point(0, 1), Point(1, 0)))
-# print(state_segment_distance(State(Point(0, 0), 90), Point(0, 1), Point(1, 0)))
-# print(state_segment_distance(State(Point(0, 0), 45), Point(0.7, 3.8), Point(5.9, 1.8)))
-# print(state_segment_distance(State(Point(0, 0), 45), Point(-1.6, 4.5), Point(-0.8, -3.1)))
+try:
+    navto(sim, Point(84, 30))
+    # navto(sim, Point(180, 30))
+    # navto(sim, Point(180, 54))
+    # navto(sim, Point(138, 54))
+    # navto(sim, Point(138, 168))
+    # navto(sim, Point(114, 168))
+    # navto(sim, Point(114, 84))
+    # navto(sim, Point(84, 84))
+    # navto(sim, Point(84, 30))
+except Exception as e:
+    print(e)
 
 # print(state_segment_distance2(State(Point(0, 0), 0), Point(0, 1), Point(1, 0)))
 # print(state_segment_distance2(State(Point(0, 0), 45), Point(0, 1), Point(1, 0)))
