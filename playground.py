@@ -22,7 +22,6 @@ LWHEEL = BP.PORT_A
 RWHEEL = BP.PORT_B
 BASEROT = 222
 DPS = 275
-DIST_RESAMPLE = 20
 
 
 BP.set_motor_limits(LWHEEL, dps=DPS)
@@ -50,11 +49,7 @@ def add_angle(langle, rangle):
 
 
 def get_sonar_reading():
-    vals = []
-    for i in range(9):
-        vals.append(BP.get_sensor(SONAR))
-        time.sleep(0.01)
-    return sorted(vals)[5]
+    return BP.get_sensor(SONAR)
 
 # drives forwards in cm
 def forward(distance):
@@ -70,45 +65,33 @@ def rotate(side):
 
 
 def navto(sim, waypoint):
-    while True:
-        state = sim.get_mean_state()
-        dx = waypoint.x - state.pos.x
-        dy = waypoint.y - state.pos.y
-        distance = (dx ** 2 + dy ** 2) ** 0.5
-        angle = (math.degrees(math.atan2(dy, dx)))
+    state = sim.get_mean_state()
+    dx = waypoint.x - state.pos.x
+    dy = waypoint.y - state.pos.y
+    distance = (dx ** 2 + dy ** 2) ** 0.5
+    angle = (math.degrees(math.atan2(dy, dx)))
 
-        angle = ((((state.a - angle)) % 360) + 360) % 360
-        if angle > 180:
-            angle -= 360
-            
-        distance = min(distance, DIST_RESAMPLE)
+    angle = ((((state.a - angle)) % 360) + 360) % 360
+    if angle > 180:
+        angle -= 360
 
-        rotate(angle)
-        forward(distance)
-
-        sim.rotate(angle)
-        sim.forward(distance)
-        # sim.draw()
-        
-        sonar = get_sonar_reading()
-        sim.resample(sonar)
-        print(f"{sonar}")
-        print(f"{waypoint}, {sim.get_mean_state()}")
-        
-        if distance < DIST_RESAMPLE:
-            break
+    print(sim.get_mean_state())
+    rotate(angle)
+    forward(distance)
 
 
-    # # turn to nearest 90 degrees
+    sim.rotate(angle)
+    sim.forward(distance)
+    # sim.draw()
+
+    # turn to nearest 90 degrees
     # nearest = round(state.a / 90) * 90
     # delta = nearest - state.a
-    # delta = ((((delta)) % 360) + 360) % 360
-    # if delta > 180:
-    #     delta -= 360
-    
     # rotate(delta)
     # sim.rotate(delta)
 
+    # sr = get_sonar_reading()
+    # sim.resample(sr)
 
 
 def _rng(sigma, mu=0):
@@ -129,8 +112,7 @@ def state_segment_distance2(state, p1, p2):
 def weighted_choice(choices):
     rnum = random.random()
     for weight, state in choices:
-        if rnum < weight:#
-            print(f"choice: {state}")
+        if rnum < weight:
             return state
         rnum -= weight
     raise ValueError("No choice made")
@@ -147,11 +129,11 @@ class State:
     def forward(self, d, e, f) -> State:
         self.pos.x += (d + e) * math.cos(math.radians(self.a))
         self.pos.y += (d + e) * math.sin(math.radians(self.a))
-        self.a = (self.a + f) 
+        self.a = (self.a + f) % 360
         return self
 
     def rotate(self, a, g) -> State:
-        self.a = (self.a - a - g)
+        self.a = (self.a + a + g) % 360
         return self
 
     def __add__(self, state) -> State:
@@ -204,7 +186,7 @@ class Point:
 
 
 class Simulation:
-    def __init__(self, e, f, g, N=100, initial_state=State(Point(0, 0), 0)):
+    def __init__(self, e, f, g, N=100, initial_state = State(Point(0,0), 0)):
         self.erng = _rng(e)
         self.frng = _rng(f)
         self.grng = _rng(g)
@@ -246,14 +228,10 @@ class Simulation:
 
     def resample(self, measurements):
         ws = [(self.calc_likelihood(state, measurements), state) for state in self.states]
-        print([w for w, s in ws])
         sws = sum([w for w, s in ws])
         if sws == 0:
-            print("Cannot normalize weights, all zero")
             return
         aws = [(w / sws, s) for w, s in ws]
-        print([w for w, s in aws])
-        
         self.states = [weighted_choice(aws) for i in range(self.N)]
 
     def forward(self, d):
@@ -307,8 +285,8 @@ class Simulation:
         return math.exp(-(expected - measurement) ** 2 / (2 * SIGMA ** 2))
 
 
-e = 0.7071067811865475
-f = 0.1426
+e = 0.07071067811865475
+f = 0.01426
 g = 2.507533339065598
 
 sim = Simulation(e, f, g, 100, State(Point(84, 30), 0))
@@ -316,7 +294,7 @@ sim = Simulation(e, f, g, 100, State(Point(84, 30), 0))
 time.sleep(1)
 
 try:
-#     # navto(sim, Point(84, 30))
+    # navto(sim, Point(84, 30))
     navto(sim, Point(180, 30))
     navto(sim, Point(180, 54))
     navto(sim, Point(138, 54))
@@ -329,7 +307,7 @@ except Exception as e:
     print(e)
     BP.reset_all()
     
-# BP.reset_all()
+BP.reset_all()
 
 
 # print(state_segment_distance2(State(Point(0, 0), 0), Point(0, 1), Point(1, 0)))

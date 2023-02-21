@@ -63,16 +63,15 @@ def navto(sim, waypoint):
     dy = waypoint.y - state.pos.y
     distance = (dx ** 2 + dy ** 2) ** 0.5
     angle = (math.degrees(math.atan2(dy, dx)))
-    # if angle < 0:
-    #     angle += 360
-    # print(angle, distance)
 
     angle = ((((state.a - angle)) % 360) + 360) % 360
     if angle > 180:
         angle -= 360
 
-    rotate(angle / 90)
-    forward(distance)
+    print(sim.get_mean_state().a)
+
+    # rotate(angle / 90)
+    # forward(distance)
     sim.rotateL(angle % 360)
     sim.forward(distance)
 
@@ -132,7 +131,7 @@ class Simulation:
         self.grng = _rng(g)
 
         self.N = N
-        self.states = [State(Point(0, 0), 0) for i in range(self.N)]
+        self.states = [State(Point(84, 30), 0) for i in range(self.N)]
 
 
     def forward(self, d):
@@ -184,11 +183,16 @@ sim = Simulation(e, f, g, 100)
 # except Exception as e:
 #     print(e)
 
-navto(sim, Point(50, 50))
-navto(sim, Point(50, 0))
-navto(sim, Point(-50, 0))
-navto(sim, Point(-50, -50))
-navto(sim, Point(0, 0))
+# rotate(90)
+# navto(sim, Point(84, 30))
+navto(sim, Point(180, 30))
+navto(sim, Point(180, 54))
+navto(sim, Point(138, 54))
+navto(sim, Point(138, 168))
+navto(sim, Point(114, 168))
+navto(sim, Point(114, 84))
+navto(sim, Point(84, 84))
+navto(sim, Point(84, 30))
 # navto(sim.get_mean_state(), Point(20, 20))
 # navto(sim.get_mean_state(), Point(-10, 0))
 # navto(sim.get_mean_state(), Point(0, 20))
