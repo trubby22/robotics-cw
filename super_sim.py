@@ -2,75 +2,75 @@ from __future__ import annotations
 import math
 import random
 
-import brickpi3
+# import brickpi3
 import math
 import time
 
 # 18cm - between wheels
 
 
-BP = brickpi3.BrickPi3()
-BP.reset_all()
+# BP = brickpi3.BrickPi3()
+# BP.reset_all()
 
 D = 6.8
 C = D * math.pi
 
 SIGMA = 3
 
-SONAR = BP.PORT_1
-LWHEEL = BP.PORT_A
-RWHEEL = BP.PORT_B
+# SONAR = BP.PORT_1
+# LWHEEL = BP.PORT_A
+# RWHEEL = BP.PORT_B
 BASEROT = 222
 DPS = 275
 DIST_RESAMPLE = 20
 
 
-BP.set_motor_limits(LWHEEL, dps=DPS)
-BP.set_motor_limits(RWHEEL, dps=DPS)
-BP.set_sensor_type(SONAR, BP.SENSOR_TYPE.NXT_ULTRASONIC)
+# BP.set_motor_limits(LWHEEL, dps=DPS)
+# BP.set_motor_limits(RWHEEL, dps=DPS)
+# BP.set_sensor_type(SONAR, BP.SENSOR_TYPE.NXT_ULTRASONIC)
 
 
-def close_enough(a, b, delta=1):
-    return abs(a - b) <= delta
+# def close_enough(a, b, delta=1):
+#     return abs(a - b) <= delta
 
 
-def add_angle(langle, rangle):
-    old_langle = BP.get_motor_encoder(LWHEEL)
-    old_rangle = BP.get_motor_encoder(RWHEEL)
-    target_langle = old_langle + langle
-    target_rangle = old_rangle + rangle
+# def add_angle(langle, rangle):
+#     old_langle = BP.get_motor_encoder(LWHEEL)
+#     old_rangle = BP.get_motor_encoder(RWHEEL)
+#     target_langle = old_langle + langle
+#     target_rangle = old_rangle + rangle
 
-    BP.set_motor_position_relative(LWHEEL, langle)
-    BP.set_motor_position_relative(RWHEEL, rangle)
+#     BP.set_motor_position_relative(LWHEEL, langle)
+#     BP.set_motor_position_relative(RWHEEL, rangle)
 
-    while not close_enough(old_langle, target_langle) and not close_enough(old_rangle, target_rangle):
-        old_langle = BP.get_motor_encoder(LWHEEL)
-        old_rangle = BP.get_motor_encoder(RWHEEL)
-        time.sleep(0.01)
-
-
-def get_sonar_reading():
-    vals = []
-    for i in range(9):
-        vals.append(BP.get_sensor(SONAR))
-        time.sleep(0.01)
-    return sorted(vals)[5]
-
-# drives forwards in cm
-def forward(distance):
-    rots = distance / C
-    angle = rots * 360
-    add_angle(angle, angle)
+#     while not close_enough(old_langle, target_langle) and not close_enough(old_rangle, target_rangle):
+#         old_langle = BP.get_motor_encoder(LWHEEL)
+#         old_rangle = BP.get_motor_encoder(RWHEEL)
+#         time.sleep(0.01)
 
 
-# side 1 = rotate anticlock, side -1 = rotate clock
-def rotate(side):
-    side = side / 90
-    add_angle(BASEROT * side, BASEROT * -side)
+# def get_sonar_reading():
+#     vals = []
+#     for i in range(9):
+#         vals.append(BP.get_sensor(SONAR))
+#         time.sleep(0.01)
+#     return sorted(vals)[5]
+
+# # drives forwards in cm
+# def forward(distance):
+#     rots = distance / C
+#     angle = rots * 360
+#     add_angle(angle, angle)
+
+
+# # side 1 = rotate anticlock, side -1 = rotate clock
+# def rotate(side):
+#     side = side / 90
+#     add_angle(BASEROT * side, BASEROT * -side)
 
 
 def navto(sim, waypoint):
-    while True:
+    for i in range(50):
         state = sim.get_mean_state()
         dx = waypoint.x - state.pos.x
         dy = waypoint.y - state.pos.y
@@ -83,14 +83,16 @@ def navto(sim, waypoint):
             
         distance = min(distance, DIST_RESAMPLE)
 
-        rotate(angle)
-        forward(distance)
+        # rotate(angle)
+        # forward(distance)
 
         sim.rotate(angle)
         sim.forward(distance)
         # sim.draw()
         
-        sonar = get_sonar_reading()
+        # sonar = get_sonar_reading()
+        dsts = [126, 106, 86, 66, 46, 30]
+        sonar = dsts[i+1]
         sim.resample(sonar)
         print(f"{sonar}")
         print(f"{waypoint}, {sim.get_mean_state()}")
@@ -130,8 +132,7 @@ def weighted_choice(choices):
     rnum = random.random()
     for weight, state in choices:
         if rnum < weight:#
-            print(f"choice: {state}")
-            return state
+            return state.clone()
         rnum -= weight
     raise ValueError("No choice made")
 
@@ -140,6 +141,13 @@ class State:
     def __init__(self, point, a) -> None:
         self.pos = point
         self.a = a
+        self._norma_angle()
+
+    def _norma_angle(self):
+        # mod the angles so it's between negative 180 and 180
+        if -360 < self.a < 360:
+            return
+        self.a = abs(self.a) % 360 * (self.a / abs(self.a))
         
     def clone(self):
         return State(Point(self.pos.x, self.pos.y), self.a) 
@@ -147,11 +155,14 @@ class State:
     def forward(self, d, e, f) -> State:
         self.pos.x += (d + e) * math.cos(math.radians(self.a))
         self.pos.y += (d + e) * math.sin(math.radians(self.a))
+
         self.a = (self.a + f) 
+        self._norma_angle()
         return self
 
     def rotate(self, a, g) -> State:
         self.a = (self.a - a - g)
+        self._norma_angle()
         return self
 
     def __add__(self, state) -> State:
@@ -318,16 +329,16 @@ time.sleep(1)
 try:
 #     # navto(sim, Point(84, 30))
     navto(sim, Point(180, 30))
-    navto(sim, Point(180, 54))
-    navto(sim, Point(138, 54))
-    navto(sim, Point(138, 168))
-    navto(sim, Point(114, 168))
-    navto(sim, Point(114, 84))
-    navto(sim, Point(84, 84))
-    navto(sim, Point(84, 30))
+    # navto(sim, Point(180, 54))
+    # navto(sim, Point(138, 54))
+    # navto(sim, Point(138, 168))
+    # navto(sim, Point(114, 168))
+    # navto(sim, Point(114, 84))
+    # navto(sim, Point(84, 84))
+    # navto(sim, Point(84, 30))
 except Exception as e:
     print(e)
-    BP.reset_all()
+    # BP.reset_all()
     
 # BP.reset_all()
 
