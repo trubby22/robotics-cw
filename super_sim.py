@@ -2,14 +2,55 @@ from __future__ import annotations
 import math
 import random
 
-import brickpi3
+# import brickpi3
 import math
 import time
+
 
 # 18cm - between wheels
 
 
-BP = brickpi3.BrickPi3()
+class BrickPi3:
+    def __init__(self):
+        self.SENSOR_TYPE = 'sensor_type'
+        self.PORT_A = 'port_a'
+        self.PORT_B = 'port_b'
+        self.PORT_1 = 'port_1'
+        self.degs = {
+            self.PORT_A: 0,
+            self.PORT_B: 0,
+        }
+
+    def reset_all(self):
+        pass
+
+    def set_motor_limits(self, LWHEEL, dps):
+        pass
+
+    def set_sensor_type(self, SONAR, NXT_ULTRASONIC):
+        pass
+
+    def get_motor_encoder(self, port: str):
+        """
+                Read a motor encoder in degrees
+
+                Keyword arguments:
+                port -- The motor port (one at a time). PORT_A, PORT_B, PORT_C, or PORT_D.
+
+                Returns the encoder position in degrees
+                """
+        return self.degs[port]
+
+    def set_motor_position_relative(self, port: str, ang):
+        self.degs[port] += ang
+
+    def get_sensor(self, _):
+        return 20
+
+
+BP = BrickPi3()
+
+# BP = brickpi3.BrickPi3()
 BP.reset_all()
 
 D = 6.8
@@ -24,10 +65,9 @@ BASEROT = 222
 DPS = 275
 DIST_RESAMPLE = 20
 
-
-BP.set_motor_limits(LWHEEL, dps=DPS)
-BP.set_motor_limits(RWHEEL, dps=DPS)
-BP.set_sensor_type(SONAR, BP.SENSOR_TYPE.NXT_ULTRASONIC)
+# BP.set_motor_limits(LWHEEL, dps=DPS)
+# BP.set_motor_limits(RWHEEL, dps=DPS)
+# BP.set_sensor_type(SONAR, BP.SENSOR_TYPE.NXT_ULTRASONIC)
 
 
 def close_enough(a, b, delta=1):
@@ -56,6 +96,7 @@ def get_sonar_reading():
         time.sleep(0.01)
     return sorted(vals)[5]
 
+
 # drives forwards in cm
 def forward(distance):
     rots = distance / C
@@ -80,7 +121,7 @@ def navto(sim, waypoint):
         angle = ((((state.a - angle)) % 360) + 360) % 360
         if angle > 180:
             angle -= 360
-            
+
         distance = min(distance, DIST_RESAMPLE)
 
         rotate(angle)
@@ -89,15 +130,14 @@ def navto(sim, waypoint):
         sim.rotate(angle)
         sim.forward(distance)
         # sim.draw()
-        
+
         sonar = get_sonar_reading()
-        sim.resample(sonar)
+        sim.resample()
         print(f"{sonar}")
         print(f"{waypoint}, {sim.get_mean_state()}")
-        
+
         if distance < DIST_RESAMPLE:
             break
-
 
     # # turn to nearest 90 degrees
     # nearest = round(state.a / 90) * 90
@@ -105,10 +145,9 @@ def navto(sim, waypoint):
     # delta = ((((delta)) % 360) + 360) % 360
     # if delta > 180:
     #     delta -= 360
-    
+
     # rotate(delta)
     # sim.rotate(delta)
-
 
 
 def _rng(sigma, mu=0):
@@ -129,7 +168,7 @@ def state_segment_distance2(state, p1, p2):
 def weighted_choice(choices):
     rnum = random.random()
     for weight, state in choices:
-        if rnum < weight:#
+        if rnum < weight:  #
             print(f"choice: {state}")
             return state
         rnum -= weight
@@ -140,14 +179,14 @@ class State:
     def __init__(self, point, a) -> None:
         self.pos = point
         self.a = a
-        
+
     def clone(self):
-        return State(Point(self.pos.x, self.pos.y), self.a) 
+        return State(Point(self.pos.x, self.pos.y), self.a)
 
     def forward(self, d, e, f) -> State:
         self.pos.x += (d + e) * math.cos(math.radians(self.a))
         self.pos.y += (d + e) * math.sin(math.radians(self.a))
-        self.a = (self.a + f) 
+        self.a = (self.a + f)
         return self
 
     def rotate(self, a, g) -> State:
@@ -244,8 +283,8 @@ class Simulation:
         self.drawBox()
         self.drawStates()
 
-    def resample(self, measurements):
-        ws = [(self.calc_likelihood(state, measurements), state) for state in self.states]
+    def resample(self):
+        ws = [(self.calc_likelihood(state), state) for state in self.states]
         print([w for w, s in ws])
         sws = sum([w for w, s in ws])
         if sws == 0:
@@ -253,7 +292,7 @@ class Simulation:
             return
         aws = [(w / sws, s) for w, s in ws]
         print([w for w, s in aws])
-        
+
         self.states = [weighted_choice(aws) for i in range(self.N)]
 
     def forward(self, d):
@@ -271,9 +310,9 @@ class Simulation:
             x += s.pos.x
             y += s.pos.y
             a += s.a
-        return State(Point(x/n, y/n), a/n)
+        return State(Point(x / n, y / n), a / n)
 
-    def find_wall(self, state, measurement):
+    def find_wall(self, state):
         # find the most likely wall and the expected distance to it
         # return the expected distance to the wall
         wall_distances = []
@@ -296,14 +335,14 @@ class Simulation:
 
         return min(wall_distances)
 
-    def calc_likelihood(self, state, measurement):
-        expected = self.find_wall(state, measurement)
-        
-        
+    def calc_likelihood(self, state):
+        expected = self.find_wall(state)
+        measurement = expected
+
         if expected is None or expected < 0:
             # no wall is found or got out of bounds
             return 0
-        
+
         return math.exp(-(expected - measurement) ** 2 / (2 * SIGMA ** 2))
 
 
@@ -316,7 +355,7 @@ sim = Simulation(e, f, g, 100, State(Point(84, 30), 0))
 time.sleep(1)
 
 try:
-#     # navto(sim, Point(84, 30))
+    #     # navto(sim, Point(84, 30))
     navto(sim, Point(180, 30))
     navto(sim, Point(180, 54))
     navto(sim, Point(138, 54))
@@ -328,7 +367,7 @@ try:
 except Exception as e:
     print(e)
     BP.reset_all()
-    
+
 # BP.reset_all()
 
 
