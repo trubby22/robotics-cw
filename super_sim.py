@@ -91,11 +91,15 @@ def navto(sim, waypoint):
         # sim.draw()
         
         # sonar = get_sonar_reading()
-        dsts = [126, 106, 86, 66, 46, 30]
-        sonar = dsts[i+1]
-        sim.resample(sonar)
-        print(f"{sonar}")
-        print(f"{waypoint}, {sim.get_mean_state()}")
+        # dsts = [126, 106, 86, 66, 46, 30]
+        # sonar = dsts[i+1]
+        sim.resample()
+        # print(f"{sonar}")
+        # print(f"{waypoint}, {sim.get_mean_state()}")
+        foo = sim.get_mean_state()
+        print(foo)
+        # a, b, c = int(a), int(b), int(c)
+        # print(a, b, c)
         
         if distance < DIST_RESAMPLE:
             break
@@ -172,7 +176,7 @@ class State:
         return State(self.pos / n, self.a / n)
 
     def __str__(self) -> str:
-        return f"({self.pos.x}, {self.pos.y}, {self.a})"
+        return f"({self.pos.x:.0f}, {self.pos.y:.0f}, {self.a:.0f})"
 
     def __repr__(self) -> str:
         return str(self)
@@ -255,15 +259,15 @@ class Simulation:
         self.drawBox()
         self.drawStates()
 
-    def resample(self, measurements):
+    def resample(self, measurements=None):
         ws = [(self.calc_likelihood(state, measurements), state) for state in self.states]
-        print([w for w, s in ws])
+        # print([w for w, s in ws])
         sws = sum([w for w, s in ws])
         if sws == 0:
             print("Cannot normalize weights, all zero")
             return
         aws = [(w / sws, s) for w, s in ws]
-        print([w for w, s in aws])
+        # print([w for w, s in aws])
         
         self.states = [weighted_choice(aws) for i in range(self.N)]
 
@@ -307,7 +311,7 @@ class Simulation:
 
         return min(wall_distances)
 
-    def calc_likelihood(self, state, measurement):
+    def calc_likelihood(self, state, measurement=None):
         expected = self.find_wall(state, measurement)
         
         
@@ -329,15 +333,16 @@ time.sleep(1)
 try:
 #     # navto(sim, Point(84, 30))
     navto(sim, Point(180, 30))
-    # navto(sim, Point(180, 54))
-    # navto(sim, Point(138, 54))
-    # navto(sim, Point(138, 168))
-    # navto(sim, Point(114, 168))
-    # navto(sim, Point(114, 84))
-    # navto(sim, Point(84, 84))
-    # navto(sim, Point(84, 30))
+    navto(sim, Point(180, 54))
+    navto(sim, Point(138, 54))
+    navto(sim, Point(138, 168))
+    navto(sim, Point(114, 168))
+    navto(sim, Point(114, 84))
+    navto(sim, Point(84, 84))
+    navto(sim, Point(84, 30))
 except Exception as e:
-    print(e)
+    raise e
+    # print(e)
     # BP.reset_all()
     
 # BP.reset_all()
